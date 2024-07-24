@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.javalab.board.repository.ProductMapper">
+
+	<!-- [상품 저장]
+    - selectKey: insert문을 실행하기 전에 selectKey를 실행하여 productId를 먼저 조회한다.
+    - keyProperty: 조회한 productId를 ProductVo의 productId에 저장한다.
+    - resultType: 조회한 productId의 타입을 지정한다.
+    - order: selectKey를 실행하는 시점을 지정한다. BEFORE는 insert문을 실행하기 전에 selectKey를 실행한다.-->
+ 	<insert id="insertProduct" parameterType="ProductVo">
+        <selectKey keyProperty="productId" resultType="long" order="BEFORE">
+            SELECT seq_product.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO product (product_id, name, description, unit_price, reg_date)
+        VALUES (#{productId}, #{name}, #{description}, #{unitPrice}, SYSDATE)
+    </insert>
+
+	<!-- 한 상품의 여러 이미지조회 -->
+	<select id="getProductWithAllImages" parameterType="long" 
+        								resultMap="ProductWithImageMap">
+	    SELECT p.product_id AS productId, p.name, p.description, 
+	           p.unit_price AS unitPrice, p.reg_date AS regDate,
+	           pi.img_id AS imgId, pi.img_path AS imgPath, pi.file_name AS fileName, pi.is_main AS isMain
+	    FROM product p
+	    LEFT JOIN prod_img pi ON p.product_id = pi.product_id
+	    WHERE p.product_id = #{productId}
+	    ORDER BY pi.img_id
+	</select>
+	
+	<!-- 한 상품과 여러 이미지를 담기 위한 구조체 
+		id : ProductWithImageMap 에서 key(pk)
+		property : ProductWithImageVo 속성
+		column : select문에 있는 컬러명
+		-->
+	<resultMap id="ProductWithImageMap" type="ProductWithImageVo">
+	    <id property="productId" column="productId" /> <!-- PK -->
+	    <result property="name" column="name" />
+	    <result property="description" column="description" />
+	    <result property="unitPrice" column="unitPrice" />
+	    <result property="regDate" column="regDate" />
+	    <!-- ProductWithImageVo의 속성중에서 imgList에 담을 형태를 만듦  -->
+	    <collection property="imgList" ofType="ImgVo">
+	        <id property="imgId" column="imgId" />
+	        <result property="productId" column="productId" />
+	        <result property="imgPath" column="imgPath" />
+	        <result property="fileName" column="fileName" />
+	        <result property="isMain" column="isMain" />
+	    </collection>
+	</resultMap>
+	
+	<!-- 이미지 여러장 저장
+		 collection="list" 작업 자료의 형태
+		 item="image" : 임시변수로 ImgVo 객체 하나 담는 역할
+		 #{image.productId} : 위의 임시 변수에서 poductId라는 속성값 조회
+		 separator="UNION ALL" : 여러 개의 쿼리문을 연결해주는 역할
+		 A.* : from절의 A alias(별칭)
+	-->
+	<insert id="insertImages" parameterType="java.util.List">
+	    INSERT INTO prod_img (img_id, product_id, img_path, file_name, is_main)
+	    SELECT seq_img.NEXTVAL, A.* FROM (
+	        <foreach collection="list" item="image" separator="UNION ALL">
+	            SELECT #{image.productId} as product_id,
+	                   #{image.imgPath} as img_path,
+	                   #{image.fileName} as file_name,
+	                   #{image.isMain} as is_main
+	            FROM DUAL
+	        </foreach>
+	    ) A
+	</insert>
+
+    <select id="getAllProduct" resultType="ProductWithImageVo">
+        SELECT p.product_id AS productId, p.name, p.description, 
+        	   p.unit_price AS unitPrice, p.reg_date AS regDate,
+               pi.img_path AS imgPath, pi.file_name AS fileName
+        FROM product p
+        LEFT JOIN prod_img pi ON p.product_id = pi.product_id AND pi.is_main = 1
+        ORDER BY p.product_id
+    </select>
+
+</mapper>

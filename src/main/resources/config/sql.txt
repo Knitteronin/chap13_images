@@ -1,0 +1,40 @@
+--create user product identified by 1234;
+--grant all privileges to product;
+--grant unlimited tablespace to product;
+
+
+-- Product Table
+-- drop table product;
+CREATE TABLE product (
+    product_id NUMBER ,
+    name VARCHAR2(100) NOT NULL,
+    description VARCHAR2(1000),
+    unit_price NUMBER(10) default 0,
+    reg_date DATE DEFAULT SYSDATE,
+    constraint pk_product primary key(product_id)
+);
+
+-- Product Image Table
+CREATE TABLE prod_img (
+    img_id NUMBER,
+    product_id NUMBER not null,
+    img_path VARCHAR2(500),
+    file_name VARCHAR2(500),
+    is_main NUMBER(1) DEFAULT 0,
+    constraint pk_prod_img primary key(img_id),
+    constraint fk_product_id FOREIGN KEY (product_id) REFERENCES product (product_id)
+);
+
+-- Sequence for product_id
+CREATE SEQUENCE seq_product
+START WITH 1
+INCREMENT BY 1
+NOCACHE
+NOCYCLE;
+
+-- Sequence for image_id
+CREATE SEQUENCE seq_img
+START WITH 1
+INCREMENT BY 1
+NOCACHE
+NOCYCLE;
